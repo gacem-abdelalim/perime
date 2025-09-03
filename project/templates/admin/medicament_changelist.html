@@ -1,0 +1,13 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools %}
+    <div class="object-tools">
+        <ul class="object-tools">
+            <li>
+                <!-- Button that triggers the sync -->
+                <a class="button" href="{% url 'admin:sync_oracle' %}">Synchronize Oracle</a>
+            </li>
+        </ul>
+    </div>
+    {{ block.super }}
+{% endblock %}
