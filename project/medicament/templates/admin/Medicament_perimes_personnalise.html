@@ -24,8 +24,8 @@
 
 <li>
     <form id="custom-form" action="{% url 'admin:sync_oracle2' %}" method="get" style="display:flex;align-items:center;gap:5px;">
-        <input type="date" id="start_date" name="start_date" required>
-        <input type="date" id="end_date" name="end_date" required>
+        <li style="font-size:15px; font-weight:bold; font-family:Istok; list-style-type:square;">date début:</li><input type="date" id="start_date" name="start_date" required>
+        <li style="font-size:15px; font-weight:bold; font-family:Istok; list-style-type:square;">date fin:</li><input type="date" id="end_date" name="end_date" style="margin-right:10px;" required>
         <a href="#" class="button"
            onclick="
                const start = document.getElementById('start_date').value;
@@ -37,8 +37,12 @@
                document.getElementById('custom-form').submit();
                return false;
            ">
-            Run Action
+            Mise à jour de la liste
         </a>
     </form>
 </li>
+
+<script>
+  document.getElementById('start_date').value = new Date().toISOString().split('T')[0];
+</script>
 {% endblock %}
