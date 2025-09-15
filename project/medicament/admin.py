@@ -1,206 +1,114 @@
-import datetime
 import openpyxl
 from django.http import HttpResponse
 from django.contrib import admin
 from .models import Medicament
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from django.db.models import Sum
-""" 
-@admin.register(Medicament)
-class MedicamentAdmin(admin.ModelAdmin):
-    list_display = ('name', 'qte_lt_6_mois', 'qte_6m_1an', 'qte_1_3_ans', 'qte_plus_3_ans')
-    actions = ['export_to_excel']
 
-    def qte_lt_6_mois(self, obj):
-        today = date.today()
-        six_months = today + timedelta(days=6*30)
-        return Medicament.objects.filter(
-            name=obj.name, expiration_date__lte=six_months
-        ).aggregate(total=Sum('quantity'))['total'] or 0
-    qte_lt_6_mois.short_description = "Qte < 6 mois"
-
-    def qte_6m_1an(self, obj):
-        today = date.today()
-        six_months = today + timedelta(days=6*30)
-        one_year = today + timedelta(days=365)
-        return Medicament.objects.filter(
-            name=obj.name,
-            expiration_date__gt=six_months,
-            expiration_date__lte=one_year
-        ).aggregate(total=Sum('quantity'))['total'] or 0
-    qte_6m_1an.short_description = "Qte 6 mois - 1 an"
-
-    def qte_1_3_ans(self, obj):
-        today = date.today()
-        one_year = today + timedelta(days=365)
-        three_years = today + timedelta(days=3*365)
-        return Medicament.objects.filter(
-            name=obj.name,
-            expiration_date__gt=one_year,
-            expiration_date__lte=three_years
-        ).aggregate(total=Sum('quantity'))['total'] or 0
-    qte_1_3_ans.short_description = "Qte 1 - 3 ans"
-
-    def qte_plus_3_ans(self, obj):
-        today = date.today()
-        three_years = today + timedelta(days=3*365)
-        return Medicament.objects.filter(
-            name=obj.name,
-            expiration_date__gt=three_years
-        ).aggregate(total=Sum('quantity'))['total'] or 0
-    qte_plus_3_ans.short_description = "Qte > 3 ans"
-
-    # -------------------- Export Action --------------------
-    def export_to_excel(self, request, queryset):
-        # Create workbook
-        workbook = openpyxl.Workbook()
-        sheet = workbook.active
-        sheet.title = "Medicaments"
-
-        # Header
-        headers = ['Name', 'Qte < 6 mois', 'Qte 6 mois - 1 an', 'Qte 1 - 3 ans', 'Qte > 3 ans']
-        sheet.append(headers)
-
-        # Data rows
-        for obj in queryset:
-            row = [
-                obj.name,
-                self.qte_lt_6_mois(obj),
-                self.qte_6m_1an(obj),
-                self.qte_1_3_ans(obj),
-                self.qte_plus_3_ans(obj),
-            ]
-            sheet.append(row)
-
-        # Prepare response
-        response = HttpResponse(
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        )
-        response['Content-Disposition'] = f'attachment; filename=medicaments_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
-        workbook.save(response)
-        return response
-
-    export_to_excel.short_description = "Exporter la sélection vers Excel"
-
-"""
-""" 
-import datetime
-import openpyxl
-from django.http import HttpResponse
 from django.contrib import admin
-from django.db.models import Sum
-from datetime import date, timedelta
-
 from .models import Medicament
-from .oracle_utils import fetch_medicaments   # import your Oracle fetcher
-
-actions = ['export_to_excel']
-@admin.register(Medicament)
-class MedicamentAdmin(admin.ModelAdmin):
-    list_display = ("name", "qte_lt_3m", "qte_3_6m", "qte_gt_6m")
-    actions = ['export_to_excel']
-
-    # -------------------- Sync Oracle before displaying --------------------
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-
-        # Fetch fresh data from Oracle
-        oracle_data = fetch_medicaments()
-
-        for item in oracle_data:
-            Medicament.objects.update_or_create(
-                med_id=item["med_id"],
-                defaults={
-                    "name": item["name"],
-                    "quantity": item["quantity"],
-                    "expiration_date": item["expiration_date"],
-                },
-            )
-
-        return super().get_queryset(request)
-
-    # -------------------- Quantities --------------------
-    def qte_lt_3m(self, obj):
-        today = date.today()
-        three_months = today + timedelta(days=90)
-        return Medicament.objects.filter(
-            med_id=obj.med_id,
-            expiration_date__lte=three_months
-        ).aggregate(total=Sum("quantity"))["total"] or 0
-    qte_lt_3m.short_description = "Qty < 3M"
-
-    def qte_3_6m(self, obj):
-        today = date.today()
-        three_months = today + timedelta(days=90)
-        six_months = today + timedelta(days=180)
-        return Medicament.objects.filter(
-            med_id=obj.med_id,
-            expiration_date__gt=three_months,
-            expiration_date__lte=six_months
-        ).aggregate(total=Sum("quantity"))["total"] or 0
-    qte_3_6m.short_description = "Qty 3-6M"
-
-    def qte_gt_6m(self, obj):
-        today = date.today()
-        six_months = today + timedelta(days=180)
-        return Medicament.objects.filter(
-            med_id=obj.med_id,
-            expiration_date__gt=six_months
-        ).aggregate(total=Sum("quantity"))["total"] or 0
-    qte_gt_6m.short_description = "Qty > 6M"
-
-    # -------------------- Export Action --------------------
-    def export_to_excel(self, request, queryset):
-        # Create workbook
-        workbook = openpyxl.Workbook()
-        sheet = workbook.active
-        sheet.title = "Medicaments"
-
-        # Header
-        headers = ['Name', 'Qte < 6 mois', 'Qte 6 mois - 1 an', 'Qte 1 - 3 ans', 'Qte > 3 ans']
-        sheet.append(headers)
-
-        # Data rows
-        for obj in queryset:
-            row = [
-                obj.name,
-                self.qte_lt_6_mois(obj),
-                self.qte_6m_1an(obj),
-                self.qte_1_3_ans(obj),
-                self.qte_plus_3_ans(obj),
-            ]
-            sheet.append(row)
-
-        # Prepare response
-        response = HttpResponse(
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        )
-        response['Content-Disposition'] = f'attachment; filename=medicaments_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
-        workbook.save(response)
-        return response
-
-    export_to_excel.short_description = "Exporter la sélection vers Excel"
-"""
-from django.contrib import admin
-from .models import Medicament, MedicamentSummary
 
 from django.contrib import admin, messages
 from django.urls import path
 from django.shortcuts import redirect
-from .models import Medicament, MedicamentSummary
-from .oracle_utils import update_medicaments
+from .models import Medicament,Medicament2
+from .oracle2 import update_medicaments
+from .oracle2copy import update_medicaments2
 
-@admin.register(Medicament)
-class MedicamentAdmin(admin.ModelAdmin):
-    list_display = ('med_id', 'name', 'quantity', 'expiration_date')
-    change_list_template = "admin/medicament_changelist.html"
+@admin.register(Medicament2)
+class Medicament2Admin(admin.ModelAdmin):
+    search_fields = ('name',)
+    actions = ['export_to_excel', 'export_all_to_excel']
+    list_display = (
+    "med_id",
+    "name",
+    "qte",
+    "valeur_achat",)
+
+    change_list_template = "admin/Medicament_perimes_personnalise.html"
+
+    def sync_oracle2(self, request):
+        start_date = request.GET.get("start_date")
+        end_date = request.GET.get("end_date")
+        
+        start_date = datetime.strptime(start_date, "%Y-%m-%d")
+        start_date = start_date.strftime("%d/%m/%Y")
+        end_date = datetime.strptime(end_date, "%Y-%m-%d")
+        end_date = end_date.strftime("%d/%m/%Y")
+        try:
+            update_medicaments2(start_date, end_date)
+            self.message_user(
+                request,
+                "Oracle data synchronized successfully!",
+                level=messages.SUCCESS,
+            )
+        except Exception as e:
+            self.message_user(request, f"Error: {str(e)}", level=messages.ERROR)
+        return redirect("../")
 
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
-            path('sync-oracle/', self.admin_site.admin_view(self.sync_oracle), name="sync_oracle"),
+            path(
+                "sync-oracle2/",
+                self.admin_site.admin_view(self.sync_oracle2),
+                name="sync_oracle2",
+            ),
         ]
         return custom_urls + urls
+
+@admin.register(Medicament)
+class MedicamentAdmin(admin.ModelAdmin):
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('sync-oracle/', self.admin_site.admin_view(self.sync_oracle), name="sync_oracle"),
+            path("export-excel/", self.admin_site.admin_view(self._export_to_excel), name="medicament_export_to_excel"),
+        ]
+        return custom_urls + urls
+    
+    search_fields = ('name',)
+    actions = ['export_to_excel', 'export_all_to_excel']
+    list_display = (
+    "med_id",
+    "name",
+    "qte_total",
+    "val_total_achat",
+
+    # < 3 mois
+    "qte_avant_3m",
+    "val_achat_avant_3m",
+
+    # 3–6 mois
+    "qte_apres_3m_avant_6m",
+    "val_achat_apres_3m_avant_6m",
+
+    # 6–12 mois
+    "qte_apres_6m_avant_12m",
+    "val_achat_apres_6m_avant_12m",
+
+    # 12–18 mois
+    "qte_apres_12m_avant_18m",
+    "val_achat_apres_12m_avant_18m",
+
+    # 18–24 mois
+    "qte_apres_18m_avant_24m",
+    "val_achat_apres_18m_avant_24m",
+
+    # 24–36 mois
+    "qte_apres_24m_avant_36m",
+    "val_achat_apres_24m_avant_36m",
+
+    # > 36 mois
+    "qte_apres_36m",
+    "val_achat_apres_36m",
+    )
+
+    change_list_template = "admin/medicament_changelist.html"
+
+    class Media:
+        js = ("admin/js/ttt.js",)
+
 
     def sync_oracle(self, request):
         try:
@@ -209,8 +117,252 @@ class MedicamentAdmin(admin.ModelAdmin):
         except Exception as e:
             self.message_user(request, f"Error: {str(e)}", level=messages.ERROR)
         return redirect("../")
+    
+    # -------------------- Export Action --------------------
+    def export_all_to_excel(self, request, queryset):
+        all_medicaments = Medicament.objects.all()
+        return self._export_to_excel(all_medicaments)
 
+    export_all_to_excel.short_description = "Exporter tous les médicaments vers Excel"
+    
+    def _export_to_excel(self, request):
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.title = "Medicaments"
 
-@admin.register(MedicamentSummary)
-class MedicamentSummaryAdmin(admin.ModelAdmin):
-    list_display = ('med', 'qty_lt_3m', 'qty_3_6m', 'qty_gt_6m')
+        queryset = Medicament.objects.all()
+
+        # Data rows
+        for obj in queryset:
+            row = [
+                    obj.med_id,
+                    obj.name,
+
+                    # Totaux
+                    obj.qte_total,
+                    obj.val_total_achat,
+
+                    # < 3 mois
+                    obj.qte_avant_3m,
+                    obj.val_achat_avant_3m,
+
+                    # 3–6 mois
+                    obj.qte_apres_3m_avant_6m,
+                    obj.val_achat_apres_3m_avant_6m,
+
+                    # 6–12 mois
+                    obj.qte_apres_6m_avant_12m,
+                    obj.val_achat_apres_6m_avant_12m,
+
+                    # 12–18 mois
+                    obj.qte_apres_12m_avant_18m,
+                    obj.val_achat_apres_12m_avant_18m,
+
+                    # 18–24 mois
+                    obj.qte_apres_18m_avant_24m,
+                    obj.val_achat_apres_18m_avant_24m,
+
+                    # 24–36 mois
+                    obj.qte_apres_24m_avant_36m,
+                    obj.val_achat_apres_24m_avant_36m,
+
+                    # > 36 mois
+                    obj.qte_apres_36m,
+                    obj.val_achat_apres_36m,
+                ]
+            sheet.append(row)
+        
+        sheet.insert_rows(1)
+        sheet.insert_rows(1)
+        sheet.merge_cells("A1:A2")
+        sheet["A1"] = "Med ID"
+        sheet.merge_cells("B1:B2")
+        sheet["B1"] = "Medicament"
+        sheet.merge_cells("C1:D1")
+        sheet["C1"] = "TOTAL"
+        sheet.merge_cells("E1:F1")
+        sheet["E1"] = "< 3 mois"
+        
+        sheet.merge_cells("G1:H1")
+        sheet["G1"] = "3–6 mois"
+        
+        sheet.merge_cells("I1:J1")
+        sheet["I1"] = "6–12 mois"
+
+        sheet.merge_cells("K1:L1")
+        sheet["K1"] = "12–18 mois"
+        
+        sheet.merge_cells("M1:N1")
+        sheet["M1"] = "18–24 mois"
+
+        sheet.merge_cells("O1:P1")
+        sheet["O1"] = "24-36 mois"
+
+        sheet.merge_cells("Q1:R1")
+        sheet["Q1"] = "> 36 mois"
+
+        sheet["C2"] = "QTE"
+        sheet["E2"] = "QTE"
+        sheet["G2"] = "QTE"
+        sheet["K2"] = "QTE"
+        sheet["M2"] = "QTE"
+        sheet["O2"] = "QTE"
+        sheet["Q2"] = "QTE"
+        
+        sheet["D2"] = "VALEUR ACHAT"
+        sheet["F2"] = "VALEUR ACHAT"
+        sheet["H2"] = "VALEUR ACHAT"
+        sheet["J2"] = "VALEUR ACHAT"
+        sheet["L2"] = "VALEUR ACHAT"
+        sheet["N2"] = "VALEUR ACHAT"
+        sheet["P2"] = "VALEUR ACHAT"
+        sheet["R2"] = "VALEUR ACHAT"
+        
+
+        
+
+        # Prepare response
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename=medicaments_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        workbook.save(response)
+        return response
+    
+    def export_to_excel(self, request, queryset):
+        # Create workbook
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.title = "Medicaments"
+
+        # Header
+        headers = ["med_id",
+                    "name",
+                    "qte_total",
+                    "val_total_achat",
+
+                    # < 3 mois
+                    "qte_avant_3m",
+                    "val_achat_avant_3m",
+
+                    # 3–6 mois
+                    "qte_apres_3m_avant_6m",
+                    "val_achat_apres_3m_avant_6m",
+
+                    # 6–12 mois
+                    "qte_apres_6m_avant_12m",
+                    "val_achat_apres_6m_avant_12m",
+
+                    # 12–18 mois
+                    "qte_apres_12m_avant_18m",
+                    "val_achat_apres_12m_avant_18m",
+
+                    # 18–24 mois
+                    "qte_apres_18m_avant_24m",
+                    "val_achat_apres_18m_avant_24m",
+
+                    # 24–36 mois
+                    "qte_apres_24m_avant_36m",
+                    "val_achat_apres_24m_avant_36m",
+
+                    # > 36 mois
+                    "qte_apres_36m",
+                    "val_achat_apres_36m",]
+        sheet.append(headers)
+
+        # Data rows
+        for obj in queryset:
+            row = [
+                    obj.med_id,
+                    obj.name,
+
+                    # Totaux
+                    obj.qte_total,
+                    obj.val_total_achat,
+
+                    # < 3 mois
+                    obj.qte_avant_3m,
+                    obj.val_achat_avant_3m,
+
+                    # 3–6 mois
+                    obj.qte_apres_3m_avant_6m,
+                    obj.val_achat_apres_3m_avant_6m,
+
+                    # 6–12 mois
+                    obj.qte_apres_6m_avant_12m,
+                    obj.val_achat_apres_6m_avant_12m,
+
+                    # 12–18 mois
+                    obj.qte_apres_12m_avant_18m,
+                    obj.val_achat_apres_12m_avant_18m,
+
+                    # 18–24 mois
+                    obj.qte_apres_18m_avant_24m,
+                    obj.val_achat_apres_18m_avant_24m,
+
+                    # 24–36 mois
+                    obj.qte_apres_24m_avant_36m,
+                    obj.val_achat_apres_24m_avant_36m,
+
+                    # > 36 mois
+                    obj.qte_apres_36m,
+                    obj.val_achat_apres_36m,
+                ]
+
+            sheet.append(row)
+
+        sheet.insert_rows(1)
+        sheet.insert_rows(1)
+        sheet.merge_cells("A1:A2")
+        sheet["A1"] = "Med ID"
+        sheet.merge_cells("B1:B2")
+        sheet["B1"] = "Medicament"
+        sheet.merge_cells("C1:D1")
+        sheet["C1"] = "TOTAL"
+        sheet.merge_cells("E1:F1")
+        sheet["E1"] = "< 3 mois"
+        
+        sheet.merge_cells("G1:H1")
+        sheet["G1"] = "3–6 mois"
+        
+        sheet.merge_cells("I1:J1")
+        sheet["I1"] = "6–12 mois"
+
+        sheet.merge_cells("K1:L1")
+        sheet["K1"] = "12–18 mois"
+        
+        sheet.merge_cells("M1:N1")
+        sheet["M1"] = "18–24 mois"
+
+        sheet.merge_cells("O1:P1")
+        sheet["O1"] = "24-36 mois"
+
+        sheet.merge_cells("Q1:R1")
+        sheet["Q1"] = "> 36 mois"
+
+        sheet["C2"] = "QTE"
+        sheet["E2"] = "QTE"
+        sheet["G2"] = "QTE"
+        sheet["K2"] = "QTE"
+        sheet["M2"] = "QTE"
+        sheet["O2"] = "QTE"
+        sheet["Q2"] = "QTE"
+        
+        sheet["D2"] = "VALEUR ACHAT"
+        sheet["F2"] = "VALEUR ACHAT"
+        sheet["H2"] = "VALEUR ACHAT"
+        sheet["J2"] = "VALEUR ACHAT"
+        sheet["L2"] = "VALEUR ACHAT"
+        sheet["N2"] = "VALEUR ACHAT"
+        sheet["P2"] = "VALEUR ACHAT"
+        sheet["R2"] = "VALEUR ACHAT"
+
+        # Prepare response
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename=medicaments_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        workbook.save(response)
+        return response
+
+    export_to_excel.short_description = "Exporter la sélection vers Excel"
