@@ -1,38 +1,42 @@
-# Python
+# Byte-compiled / cache
 __pycache__/
 *.py[cod]
+
+# C extensions
 *.so
+
+# Django specific
+*.log
+db.sqlite3
+media/
+staticfiles/
+
+# Environment variables
+.env
+
+# Virtual environments (common names)
+venv/
+.venv/
+env/
+
+# IDEs / Editors
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Distribution / packaging
 *.egg
 *.egg-info/
 dist/
 build/
 
-# Django
-*.log
-*.pot
-*.pyc
-db.sqlite3
-media/
-staticfiles/
-.env
+# Optional: comment out if you want migrations in Git
+project/medicament/migrations/*.py
+!project/medicament/migrations/__init__.py
 
-# VS Code
-.vscode/
-
-# PyCharm
-.idea/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Migrations (optional: comment this if you want them in git)
-*/migrations/*.py
-!*/migrations/__init__.py
-
-# Virtual environment
-venv/
-.env/
 
 project/.env
 /Lib
