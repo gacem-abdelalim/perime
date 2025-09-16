@@ -1,3 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Django
+*.log
+*.pot
+*.pyc
+db.sqlite3
+media/
+staticfiles/
+.env
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Migrations (optional: comment this if you want them in git)
+*/migrations/*.py
+!*/migrations/__init__.py
+
+# Virtual environment
+venv/
+.env/
+
 project/.env
 /Lib
 Scripts/activate
